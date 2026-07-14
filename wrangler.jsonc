@@ -3,6 +3,9 @@
   // `npm run build` gera ./dist; o wrangler publica essa pasta.
   "name": "dashboard-admin",
   "compatibility_date": "2024-12-01",
+  // URL pública *.workers.dev ligada; preview por-versão desligado (dashboard de admin).
+  "workers_dev": true,
+  "preview_urls": false,
   "assets": {
     "directory": "./dist",
     // Qualquer rota que não seja arquivo → index.html (TanStack Router).
