@@ -1,0 +1,11 @@
+{
+  // Deploy do dashboard (SPA Vite) como estático no Cloudflare Workers.
+  // `npm run build` gera ./dist; o wrangler publica essa pasta.
+  "name": "dashboard-admin",
+  "compatibility_date": "2024-12-01",
+  "assets": {
+    "directory": "./dist",
+    // Qualquer rota que não seja arquivo → index.html (TanStack Router).
+    "not_found_handling": "single-page-application"
+  }
+}
