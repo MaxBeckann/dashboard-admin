@@ -23,8 +23,6 @@ import {
 import { SalesSummary } from './sales-summary'
 import { Stat } from './ui'
 
-const PENDING = ['pending', 'pendente', 'aguardando', 'waiting']
-
 type TipRow = { value: number; payload: Record<string, unknown> }
 type TipProps = { active?: boolean; payload?: TipRow[]; label?: string }
 

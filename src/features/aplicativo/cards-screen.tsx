@@ -4,7 +4,6 @@ import { toast } from 'sonner'
 import {
   getAppConfig,
   setAppConfig,
-  type AppConfig,
   type ImageSource,
   type PlatformKey,
 } from '@/lib/admin-api'
