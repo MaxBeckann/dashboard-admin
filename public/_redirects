@@ -1,0 +1,3 @@
+# SPA (TanStack Router): toda rota volta pro index.html (senão F5 em /financeiro
+# ou qualquer rota profunda dá 404). Vale pro Cloudflare Pages e pro Netlify.
+/*    /index.html   200

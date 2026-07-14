@@ -1,0 +1,7 @@
+# Assets com hash no nome (Vite) → cache longo e imutável.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# O HTML não pode ter cache longo (senão deploy novo não aparece).
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
