@@ -3,27 +3,38 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertTriangle,
   ArrowRight,
+  CheckCircle2,
+  Copy,
+  Download,
   Globe,
+  History,
   Loader2,
+  MessageCircle,
   Plus,
   RefreshCw,
   Search,
   ShieldCheck,
   Trash2,
   Users,
+  XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   bulkSetDns,
+  getDnsHistory,
   getDnsOverview,
   getDnsUsers,
   saveKnownDns,
+  testDns,
+  type AuditEntry,
   type DnsOverview,
   type DnsScope,
+  type DnsTestResult,
   type DnsUsage,
   type DnsUser,
   type KnownDns,
 } from '@/lib/admin-api'
+import { waUrl } from '@/features/user-admin/user-actions'
 import { cn, getDisplayNameInitials } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -80,11 +91,84 @@ function tone(scope: DnsScope) {
     : { border: 'border-amber-500/30', bg: 'bg-amber-500/5', text: 'text-amber-500', chip: 'bg-amber-500/15 text-amber-500' }
 }
 
+function copy(text: string, label = 'Copiado!') {
+  navigator.clipboard.writeText(text).then(
+    () => toast.success(label),
+    () => toast.error('Não foi possível copiar.')
+  )
+}
+
+function fmtDateTime(iso: string | null): string {
+  if (!iso) return '—'
+  try {
+    return new Date(iso).toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return '—'
+  }
+}
+
+/** Botão "Testar" com selo (🟢 no ar / 🔴 fora) — health-check server-side. */
+function DnsTestButton({ dns }: { dns: string }) {
+  const [result, setResult] = useState<DnsTestResult | null>(null)
+  const mut = useMutation({
+    mutationFn: () => testDns(dns.trim()),
+    onSuccess: (r) => (r.ok ? toast.success(r.message) : toast.error(r.message)),
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : 'Falha ao testar.'),
+  })
+  const disabled = dns.trim().length < 4 || mut.isPending
+  return (
+    <div className='flex items-center gap-2'>
+      <Button
+        type='button'
+        variant='outline'
+        size='sm'
+        disabled={disabled}
+        onClick={() => {
+          setResult(null)
+          mut.mutate(undefined, { onSuccess: (r) => setResult(r) })
+        }}
+      >
+        {mut.isPending ? (
+          <Loader2 className='size-4 animate-spin' />
+        ) : (
+          <ShieldCheck className='size-4' />
+        )}
+        Testar
+      </Button>
+      {result && !mut.isPending && (
+        <span
+          className={cn(
+            'flex items-center gap-1 text-xs font-medium',
+            result.ok ? 'text-emerald-500' : 'text-rose-500'
+          )}
+          title={result.message}
+        >
+          {result.ok ? (
+            <CheckCircle2 className='size-4' />
+          ) : (
+            <XCircle className='size-4' />
+          )}
+          {result.ok ? 'no ar' : 'fora'}
+        </span>
+      )}
+    </div>
+  )
+}
+
 export function Dns() {
   const qc = useQueryClient()
+  const [includeInactive, setIncludeInactive] = useState(false)
   const overviewQuery = useQuery({
-    queryKey: ['dns-overview'],
-    queryFn: getDnsOverview,
+    queryKey: ['dns-overview', includeInactive],
+    queryFn: () => getDnsOverview(includeInactive),
+    refetchInterval: 20_000,
   })
   const data = overviewQuery.data
   const refresh = () => qc.invalidateQueries({ queryKey: ['dns-overview'] })
@@ -116,17 +200,26 @@ export function Dns() {
               mirror cair — e veja quem usa cada servidor.
             </p>
           </div>
-          <Button
-            variant='outline'
-            size='sm'
-            onClick={() => overviewQuery.refetch()}
-            disabled={overviewQuery.isFetching}
-          >
-            <RefreshCw
-              className={cn('size-4', overviewQuery.isFetching && 'animate-spin')}
-            />
-            Atualizar
-          </Button>
+          <div className='flex items-center gap-3'>
+            <label className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+              <Checkbox
+                checked={includeInactive}
+                onCheckedChange={(v) => setIncludeInactive(v === true)}
+              />
+              incluir vencidas/inativas
+            </label>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => overviewQuery.refetch()}
+              disabled={overviewQuery.isFetching}
+            >
+              <RefreshCw
+                className={cn('size-4', overviewQuery.isFetching && 'animate-spin')}
+              />
+              Atualizar
+            </Button>
+          </div>
         </div>
 
         <div className='space-y-6 rounded-2xl border bg-card p-4 sm:p-5'>
@@ -183,6 +276,9 @@ export function Dns() {
 
           {/* DNS conhecidos (compartilhado) */}
           <KnownDnsEditor known={data?.known ?? []} onSaved={refresh} />
+
+          {/* Histórico de trocas */}
+          <DnsHistory />
         </div>
       </Main>
     </>
@@ -352,8 +448,64 @@ function DnsUserRow({ u }: { u: DnsUser }) {
             .join(' · ')}
         </p>
       </div>
+      <div className='flex shrink-0 items-center gap-1'>
+        {u.username && (
+          <button
+            type='button'
+            title={`Copiar usuário: ${u.username}`}
+            onClick={() => copy(u.username, 'Usuário copiado!')}
+            className='flex items-center gap-1 rounded border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground'
+          >
+            <Copy className='size-3' /> user
+          </button>
+        )}
+        {u.password && (
+          <button
+            type='button'
+            title='Copiar senha'
+            onClick={() => copy(u.password, 'Senha copiada!')}
+            className='flex items-center gap-1 rounded border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground'
+          >
+            <Copy className='size-3' /> senha
+          </button>
+        )}
+        {waUrl(u.phone) && (
+          <button
+            type='button'
+            title='Falar no WhatsApp'
+            onClick={() => window.open(waUrl(u.phone)!, '_blank')}
+            className='rounded p-1 text-emerald-500 hover:text-emerald-400'
+          >
+            <MessageCircle className='size-4' />
+          </button>
+        )}
+      </div>
     </div>
   )
+}
+
+function exportDnsCsv(url: string, users: DnsUser[]) {
+  const header = ['nome', 'email', 'perfil', 'usuario', 'senha', 'telefone']
+  const esc = (c: unknown) => `"${String(c ?? '').replace(/"/g, '""')}"`
+  const csv = [
+    header,
+    ...users.map((u) => [
+      u.accountName,
+      u.accountEmail,
+      u.profileName,
+      u.username,
+      u.password,
+      u.phone ?? '',
+    ]),
+  ]
+    .map((r) => r.map(esc).join(','))
+    .join('\n')
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `dns-${url.replace(/[^a-z0-9]/gi, '_')}.csv`
+  a.click()
+  URL.revokeObjectURL(a.href)
 }
 
 function DnsUserList({ url, scope }: { url: string; scope: DnsScope }) {
@@ -383,7 +535,20 @@ function DnsUserList({ url, scope }: { url: string; scope: DnsScope }) {
   }
   return (
     <div className='space-y-3'>
-      <SearchBox value={search} onChange={setSearch} />
+      <div className='flex items-center gap-2'>
+        <div className='flex-1'>
+          <SearchBox value={search} onChange={setSearch} />
+        </div>
+        <Button
+          type='button'
+          variant='outline'
+          size='sm'
+          disabled={users.length === 0}
+          onClick={() => exportDnsCsv(url, users)}
+        >
+          <Download className='size-4' /> CSV
+        </Button>
+      </div>
       {q.data?.capped && (
         <p className='text-xs text-amber-500'>
           Mostrando os primeiros {users.length} (há mais).
@@ -509,6 +674,11 @@ function BulkSwapCard({
                   {k.label || k.url}
                 </button>
               ))}
+            </div>
+          )}
+          {toUrl.trim().length > 3 && (
+            <div className='mt-2'>
+              <DnsTestButton dns={toUrl} />
             </div>
           )}
         </div>
@@ -734,6 +904,7 @@ function KnownDnsEditor({
                 />
                 ativo
               </label>
+              {r.url.trim().length > 3 && <DnsTestButton dns={r.url} />}
               <Button
                 variant='ghost'
                 size='icon'
@@ -753,6 +924,66 @@ function KnownDnsEditor({
           Salvar DNS conhecidos
         </Button>
       </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+function DnsHistory() {
+  const q = useQuery({
+    queryKey: ['dns-history'],
+    queryFn: () => getDnsHistory(30),
+  })
+  const items = q.data?.items ?? []
+  return (
+    <div className='rounded-2xl border bg-muted/40 p-5'>
+      <p className='mb-3 flex items-center gap-2 text-sm font-semibold'>
+        <History className='size-4' /> Histórico de trocas
+      </p>
+      {q.isLoading ? (
+        <Loader2 className='size-4 animate-spin text-muted-foreground' />
+      ) : items.length === 0 ? (
+        <p className='text-xs text-muted-foreground'>
+          Nenhuma troca registrada ainda.
+        </p>
+      ) : (
+        <div className='space-y-2'>
+          {items.map((e) => (
+            <DnsHistoryRow key={e.id} e={e} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DnsHistoryRow({ e }: { e: AuditEntry }) {
+  const d = (e.details ?? {}) as Record<string, unknown>
+  let desc: string
+  if (e.action === 'admin_bulk_set_dns') {
+    desc =
+      `Troca em massa (${d.scope === 'app' ? 'só-app' : 'planos'}): ` +
+      `${d.fromUrl ?? 'todos'} → ${d.toUrl ?? '?'} · ${d.changed ?? 0} usuário(s)` +
+      (d.notified ? `, ${d.notified} avisado(s)` : '')
+  } else if (e.action === 'admin_set_user_dns') {
+    desc =
+      `1 usuário${e.targetName ? ` (${e.targetName})` : ''} → ${d.toUrl ?? '?'}`
+  } else if (e.action === 'admin_dns_save_known') {
+    desc = `Lista de DNS conhecidos salva (${d.count ?? 0})`
+  } else {
+    desc = e.action
+  }
+  return (
+    <div className='flex items-start justify-between gap-3 rounded-lg bg-muted/50 px-3 py-2 text-sm'>
+      <div className='min-w-0'>
+        <p className='truncate'>{desc}</p>
+        <p className='text-xs text-muted-foreground'>
+          por {e.adminName || e.adminId || '—'}
+        </p>
+      </div>
+      <span className='shrink-0 text-xs text-muted-foreground'>
+        {fmtDateTime(e.createdAt)}
+      </span>
     </div>
   )
 }

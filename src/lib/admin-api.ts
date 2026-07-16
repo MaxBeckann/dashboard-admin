@@ -1199,8 +1199,10 @@ export interface DnsOverview {
   }
 }
 /** Panorama de DNS: distribuição dos planos + só-app + lista curada. */
-export async function getDnsOverview(): Promise<DnsOverview> {
-  return callBoxHandler<DnsOverview>('admin_dns_overview', {})
+export async function getDnsOverview(
+  includeInactive = false
+): Promise<DnsOverview> {
+  return callBoxHandler<DnsOverview>('admin_dns_overview', { includeInactive })
 }
 
 export interface DnsUser {
@@ -1209,6 +1211,32 @@ export interface DnsUser {
   accountEmail: string
   profileName: string
   avatarUrl: string | null
+  username: string
+  password: string
+  phone: string | null
+}
+
+export interface DnsTestResult {
+  ok: boolean
+  status?: number
+  active?: boolean
+  reason?: string
+  message: string
+}
+/** Testa se um DNS responde (health-check no player_api, roda no servidor). */
+export async function testDns(
+  dns: string,
+  creds?: { username: string; password: string }
+): Promise<DnsTestResult> {
+  return callBoxHandler<DnsTestResult>('admin_test_dns', { dns, ...(creds ?? {}) })
+}
+
+/** Histórico das últimas trocas de DNS (do audit log). */
+export async function getDnsHistory(limit = 30): Promise<{ items: AuditEntry[] }> {
+  return callBoxHandler('admin_audit_log', {
+    limit,
+    actions: ['admin_bulk_set_dns', 'admin_set_user_dns', 'admin_dns_save_known'],
+  })
 }
 /** Lista os usuários de um DNS (drill-down). scope='plan' (nossas listas) / 'app' (lista própria). */
 export async function getDnsUsers(
