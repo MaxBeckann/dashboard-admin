@@ -1174,9 +1174,12 @@ export async function updateSubprofile(
 }
 
 // ── DNS (servidor da lista) ──────────────────────────────────────────────
+export type DnsScope = 'plan' | 'app'
 export interface DnsUsage {
   url: string
   count: number
+  /** Amostra de avatares (http) p/ o empilhado no card. */
+  avatars?: string[]
 }
 export interface KnownDns {
   url: string
@@ -1200,25 +1203,54 @@ export async function getDnsOverview(): Promise<DnsOverview> {
   return callBoxHandler<DnsOverview>('admin_dns_overview', {})
 }
 
+export interface DnsUser {
+  userId: string
+  accountName: string
+  accountEmail: string
+  profileName: string
+  avatarUrl: string | null
+}
+/** Lista os usuários de um DNS (drill-down). scope='plan' (nossas listas) / 'app' (lista própria). */
+export async function getDnsUsers(
+  url: string,
+  scope: DnsScope
+): Promise<{
+  url: string
+  scope: DnsScope
+  total: number
+  capped: boolean
+  users: DnsUser[]
+}> {
+  return callBoxHandler('admin_dns_users', { url, scope })
+}
+
 export interface DnsImpact {
   count: number
   sample: { userId: string; email: string | null; currentUrl: string | null }[]
 }
-/** Prévia: quantos usuários de plano a troca atinge (filtro opcional por DNS de origem). */
-export async function getDnsImpact(fromUrl?: string): Promise<DnsImpact> {
-  return callBoxHandler<DnsImpact>('admin_dns_impact', fromUrl ? { fromUrl } : {})
+/** Prévia: quantos usuários a troca atinge (filtro opcional por DNS de origem + scope). */
+export async function getDnsImpact(
+  fromUrl?: string,
+  scope: DnsScope = 'plan'
+): Promise<DnsImpact> {
+  return callBoxHandler<DnsImpact>('admin_dns_impact', {
+    scope,
+    ...(fromUrl ? { fromUrl } : {}),
+  })
 }
 
 export interface BulkSetDnsInput {
-  /** Se vier, só troca quem está NESSE DNS. Vazio = todos os planos. */
+  /** 'plan' = listas que nós geramos; 'app' = lista própria do cliente (perigoso). */
+  scope?: DnsScope
+  /** Se vier, só troca quem está NESSE DNS. Vazio = todos (só p/ plano). */
   fromUrl?: string
   toUrl: string
-  /** Avisar os usuários afetados (mensagem no app). */
+  /** Avisar os afetados (mensagem no app; aceita {NOME}/{DNS_NOVO}/{DNS_ANTIGO}). */
   notify?: boolean
   notifyTitle?: string
   notifyBody?: string
 }
-/** Troca em massa o DNS dos usuários de plano. */
+/** Troca em massa o DNS dos usuários (plano ou lista própria). */
 export async function bulkSetDns(
   input: BulkSetDnsInput
 ): Promise<{ changed: number; failed: number; notified: number }> {
