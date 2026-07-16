@@ -1,6 +1,7 @@
 import {
   Bell,
   Flame,
+  Globe,
   LayoutDashboard,
   Radio,
   ScrollText,
@@ -42,6 +43,7 @@ export const sidebarData: SidebarData = {
       title: 'Serviços',
       items: [
         { title: 'IPTV', url: '/iptv', icon: Tv },
+        { title: 'DNS', url: '/dns', icon: Globe },
         { title: 'Aplicativo', url: '/aplicativo', icon: Smartphone },
         { title: 'Auditoria', url: '/auditoria', icon: ScrollText },
       ],

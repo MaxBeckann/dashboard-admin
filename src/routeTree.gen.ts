@@ -35,6 +35,7 @@ import { Route as AuthenticatedMessagesIndexRouteImport } from './routes/_authen
 import { Route as AuthenticatedIptvIndexRouteImport } from './routes/_authenticated/iptv/index'
 import { Route as AuthenticatedHelpCenterIndexRouteImport } from './routes/_authenticated/help-center/index'
 import { Route as AuthenticatedFinanceiroIndexRouteImport } from './routes/_authenticated/financeiro/index'
+import { Route as AuthenticatedDnsIndexRouteImport } from './routes/_authenticated/dns/index'
 import { Route as AuthenticatedCouponsIndexRouteImport } from './routes/_authenticated/coupons/index'
 import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats/index'
 import { Route as AuthenticatedAuditoriaIndexRouteImport } from './routes/_authenticated/auditoria/index'
@@ -198,6 +199,11 @@ const AuthenticatedFinanceiroIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedFinanceiroRouteRoute,
   } as any)
+const AuthenticatedDnsIndexRoute = AuthenticatedDnsIndexRouteImport.update({
+  id: '/dns/',
+  path: '/dns/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedCouponsIndexRoute =
   AuthenticatedCouponsIndexRouteImport.update({
     id: '/coupons/',
@@ -381,6 +387,7 @@ export interface FileRoutesByFullPath {
   '/auditoria/': typeof AuthenticatedAuditoriaIndexRoute
   '/chats/': typeof AuthenticatedChatsIndexRoute
   '/coupons/': typeof AuthenticatedCouponsIndexRoute
+  '/dns/': typeof AuthenticatedDnsIndexRoute
   '/financeiro/': typeof AuthenticatedFinanceiroIndexRoute
   '/help-center/': typeof AuthenticatedHelpCenterIndexRoute
   '/iptv/': typeof AuthenticatedIptvIndexRoute
@@ -427,6 +434,7 @@ export interface FileRoutesByTo {
   '/auditoria': typeof AuthenticatedAuditoriaIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
   '/coupons': typeof AuthenticatedCouponsIndexRoute
+  '/dns': typeof AuthenticatedDnsIndexRoute
   '/financeiro': typeof AuthenticatedFinanceiroIndexRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
   '/iptv': typeof AuthenticatedIptvIndexRoute
@@ -481,6 +489,7 @@ export interface FileRoutesById {
   '/_authenticated/auditoria/': typeof AuthenticatedAuditoriaIndexRoute
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
   '/_authenticated/coupons/': typeof AuthenticatedCouponsIndexRoute
+  '/_authenticated/dns/': typeof AuthenticatedDnsIndexRoute
   '/_authenticated/financeiro/': typeof AuthenticatedFinanceiroIndexRoute
   '/_authenticated/help-center/': typeof AuthenticatedHelpCenterIndexRoute
   '/_authenticated/iptv/': typeof AuthenticatedIptvIndexRoute
@@ -533,6 +542,7 @@ export interface FileRouteTypes {
     | '/auditoria/'
     | '/chats/'
     | '/coupons/'
+    | '/dns/'
     | '/financeiro/'
     | '/help-center/'
     | '/iptv/'
@@ -579,6 +589,7 @@ export interface FileRouteTypes {
     | '/auditoria'
     | '/chats'
     | '/coupons'
+    | '/dns'
     | '/financeiro'
     | '/help-center'
     | '/iptv'
@@ -632,6 +643,7 @@ export interface FileRouteTypes {
     | '/_authenticated/auditoria/'
     | '/_authenticated/chats/'
     | '/_authenticated/coupons/'
+    | '/_authenticated/dns/'
     | '/_authenticated/financeiro/'
     | '/_authenticated/help-center/'
     | '/_authenticated/iptv/'
@@ -845,6 +857,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/financeiro/'
       preLoaderRoute: typeof AuthenticatedFinanceiroIndexRouteImport
       parentRoute: typeof AuthenticatedFinanceiroRouteRoute
+    }
+    '/_authenticated/dns/': {
+      id: '/_authenticated/dns/'
+      path: '/dns'
+      fullPath: '/dns/'
+      preLoaderRoute: typeof AuthenticatedDnsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/coupons/': {
       id: '/_authenticated/coupons/'
@@ -1130,6 +1149,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAuditoriaIndexRoute: typeof AuthenticatedAuditoriaIndexRoute
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
   AuthenticatedCouponsIndexRoute: typeof AuthenticatedCouponsIndexRoute
+  AuthenticatedDnsIndexRoute: typeof AuthenticatedDnsIndexRoute
   AuthenticatedHelpCenterIndexRoute: typeof AuthenticatedHelpCenterIndexRoute
   AuthenticatedIptvIndexRoute: typeof AuthenticatedIptvIndexRoute
   AuthenticatedMessagesIndexRoute: typeof AuthenticatedMessagesIndexRoute
@@ -1152,6 +1172,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAuditoriaIndexRoute: AuthenticatedAuditoriaIndexRoute,
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
   AuthenticatedCouponsIndexRoute: AuthenticatedCouponsIndexRoute,
+  AuthenticatedDnsIndexRoute: AuthenticatedDnsIndexRoute,
   AuthenticatedHelpCenterIndexRoute: AuthenticatedHelpCenterIndexRoute,
   AuthenticatedIptvIndexRoute: AuthenticatedIptvIndexRoute,
   AuthenticatedMessagesIndexRoute: AuthenticatedMessagesIndexRoute,

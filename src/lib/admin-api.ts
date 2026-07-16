@@ -1173,6 +1173,70 @@ export async function updateSubprofile(
   return callBoxHandler('admin_update_subprofile', { profileId, ...fields })
 }
 
+// ── DNS (servidor da lista) ──────────────────────────────────────────────
+export interface DnsUsage {
+  url: string
+  count: number
+}
+export interface KnownDns {
+  url: string
+  label: string
+  note?: string
+  active: boolean
+}
+export interface DnsOverview {
+  planDns: DnsUsage[]
+  appDns: DnsUsage[]
+  known: KnownDns[]
+  totals: {
+    planUsers: number
+    appUsers: number
+    distinctPlanDns: number
+    distinctAppDns: number
+  }
+}
+/** Panorama de DNS: distribuição dos planos + só-app + lista curada. */
+export async function getDnsOverview(): Promise<DnsOverview> {
+  return callBoxHandler<DnsOverview>('admin_dns_overview', {})
+}
+
+export interface DnsImpact {
+  count: number
+  sample: { userId: string; email: string | null; currentUrl: string | null }[]
+}
+/** Prévia: quantos usuários de plano a troca atinge (filtro opcional por DNS de origem). */
+export async function getDnsImpact(fromUrl?: string): Promise<DnsImpact> {
+  return callBoxHandler<DnsImpact>('admin_dns_impact', fromUrl ? { fromUrl } : {})
+}
+
+export interface BulkSetDnsInput {
+  /** Se vier, só troca quem está NESSE DNS. Vazio = todos os planos. */
+  fromUrl?: string
+  toUrl: string
+  /** Avisar os usuários afetados (mensagem no app). */
+  notify?: boolean
+  notifyTitle?: string
+  notifyBody?: string
+}
+/** Troca em massa o DNS dos usuários de plano. */
+export async function bulkSetDns(
+  input: BulkSetDnsInput
+): Promise<{ changed: number; failed: number; notified: number }> {
+  return callBoxHandler('admin_bulk_set_dns', { ...input })
+}
+
+/** Salva a lista curada de DNS conhecidos. */
+export async function saveKnownDns(
+  servers: KnownDns[]
+): Promise<{ servers: KnownDns[] }> {
+  return callBoxHandler('admin_dns_save_known', { servers })
+}
+
+/** Troca o DNS de UM usuário de plano (user_profiles + iptv_lines). */
+export async function setUserDns(userId: string, toUrl: string) {
+  return callBoxHandler('admin_set_user_dns', { userId, toUrl })
+}
+
 /** Exclui o usuário (conta + dados). Irreversível. */
 export async function deleteUser(userId: string) {
   return callBoxHandler('admin_delete_user', { userId })

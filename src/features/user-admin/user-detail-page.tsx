@@ -10,6 +10,7 @@ import {
   Copy,
   Eye,
   EyeOff,
+  Globe,
   KeyRound,
   Loader2,
   MapPin,
@@ -28,6 +29,7 @@ import {
   platformLabel,
   setAdmin,
   setPassword,
+  setUserDns,
   updateSubprofile,
   updateUser,
   type AdminUserRow,
@@ -36,6 +38,7 @@ import {
   type UpdateUserInput,
   type UserAudience,
 } from '@/lib/admin-api'
+import { parsePlanCode } from '@/lib/plans'
 import { getDisplayNameInitials } from '@/lib/utils'
 import { PlatformIcon } from './platform-icon'
 import { toast } from 'sonner'
@@ -715,6 +718,13 @@ export function UserDetailPage() {
               </div>
             </Section>
 
+            {/* ===== DNS ===== */}
+            <DnsSection
+              userId={userId}
+              planName={d.user.planName}
+              subProfiles={d.subProfiles}
+            />
+
             {/* ===== Sub-perfis ===== */}
             <Section title={`👥 Sub-perfis (${d.subProfilesCount})`}>
               {d.subProfiles.length === 0 ? (
@@ -1130,6 +1140,108 @@ function ControlRow({
       </div>
       <div className='flex items-center gap-2'>{children}</div>
     </div>
+  )
+}
+
+// Seção DNS: mostra o servidor da lista e, p/ plano-com-lista, permite trocar.
+function DnsSection({
+  userId,
+  planName,
+  subProfiles,
+}: {
+  userId: string
+  planName: string | null
+  subProfiles: SubProfile[]
+}) {
+  const qc = useQueryClient()
+  const isListPlan = parsePlanCode(planName)?.family === 'list'
+  const dnsSubs = subProfiles.filter((s) => s.serverUrl)
+  const [open, setOpen] = useState(false)
+  const [url, setUrl] = useState('')
+
+  const mut = useMutation({
+    mutationFn: () => setUserDns(userId, url.trim()),
+    onSuccess: () => {
+      toast.success('DNS trocado. O app pega na próxima abertura.')
+      setOpen(false)
+      setUrl('')
+      qc.invalidateQueries({ queryKey: ['admin-user-detail', userId] })
+    },
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : 'Falha ao trocar DNS.'),
+  })
+
+  return (
+    <Section title='🌐 DNS'>
+      {dnsSubs.length === 0 ? (
+        <p className='text-sm text-muted-foreground'>
+          {isListPlan ? 'Lista ainda não provisionada.' : 'Sem lista configurada.'}
+        </p>
+      ) : (
+        <div className='space-y-2'>
+          {dnsSubs.map((s) => (
+            <ControlRow
+              key={s.id}
+              icon={<Globe className='size-4' />}
+              title={s.name || '(sem nome)'}
+              desc={s.serverUrl || '—'}
+            >
+              <button
+                type='button'
+                className='text-muted-foreground hover:text-foreground'
+                title='Copiar'
+                onClick={() => {
+                  navigator.clipboard.writeText(s.serverUrl || '')
+                  toast.success('Copiado!')
+                }}
+              >
+                <Copy className='size-4' />
+              </button>
+            </ControlRow>
+          ))}
+        </div>
+      )}
+
+      {isListPlan ? (
+        <div className='mt-3'>
+          <Button size='sm' onClick={() => setOpen(true)}>
+            Trocar DNS
+          </Button>
+        </div>
+      ) : (
+        <p className='mt-3 text-xs text-muted-foreground'>
+          Lista própria do cliente — só leitura.
+        </p>
+      )}
+
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Trocar DNS do usuário</AlertDialogTitle>
+            <AlertDialogDescription>
+              Atualiza o servidor da lista deste cliente. Precisa ser um mirror
+              válido do mesmo painel (as credenciais são as mesmas).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            placeholder='http://novodns.sbs'
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            autoFocus
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <Button
+              disabled={url.trim().length < 4 || mut.isPending}
+              onClick={() => mut.mutate()}
+            >
+              {mut.isPending && <Loader2 className='size-4 animate-spin' />}
+              Trocar
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Section>
   )
 }
 
