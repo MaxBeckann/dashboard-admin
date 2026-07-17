@@ -153,6 +153,34 @@ export function AplicativoGeral() {
         </div>
       </section>
 
+      {/* Reprodução — merge com fallback */}
+      <section className='space-y-4 border-t pt-6'>
+        <div>
+          <h2 className='text-sm font-semibold'>Reprodução</h2>
+          <p className='text-xs text-muted-foreground'>
+            Como o player reage quando uma fonte da lista está morta.
+          </p>
+        </div>
+        <div className='flex items-center justify-between rounded-xl border bg-muted/40 p-4'>
+          <div>
+            <Label className='text-sm font-medium'>
+              Merge com fallback (fonte alternativa)
+            </Label>
+            <p className='text-xs text-muted-foreground'>
+              Se a fonte morrer ao tocar, o app tenta automaticamente outra fonte
+              do mesmo título (quando a lista tem duplicado). Lembre de{' '}
+              <b>Salvar</b> (acima).
+            </p>
+          </div>
+          <Switch
+            checked={g.mergeFallback}
+            onCheckedChange={(v) =>
+              setCfg({ ...cfg, geral: { ...g, mergeFallback: v } })
+            }
+          />
+        </div>
+      </section>
+
       {/* Cache do TMDB */}
       <section className='space-y-1.5 border-t pt-6'>
         <Label className='text-sm font-medium'>Cache do TMDB (dias)</Label>

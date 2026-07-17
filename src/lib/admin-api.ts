@@ -405,6 +405,8 @@ export interface AppConfig {
     cacheDays: number
     /** "Continue assistindo" (card do histórico) — global. 'tmdb' | 'iptv'. */
     historyImageSource: ImageSource
+    /** Se uma fonte falhar ao tocar, o player tenta a fonte alternativa. */
+    mergeFallback: boolean
   }
 }
 
