@@ -456,6 +456,12 @@ export interface HiddenCategory {
 
 export interface HiddenItem {
   id: string
+  /** Título — só para o dashboard; sem ele a lista vira números soltos. */
+  t?: string
+  /** Categoria de onde veio, para agrupar a listagem. */
+  c?: string
+  /** Quando foi ocultado (ISO). */
+  at?: string
 }
 
 export interface HiddenContent {

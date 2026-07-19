@@ -18,6 +18,7 @@ import {
   probeCategories,
   setHiddenContent,
   type HiddenContent,
+  type HiddenItem,
   type HiddenType,
 } from '@/lib/admin-api'
 import { Button } from '@/components/ui/button'
@@ -35,6 +36,58 @@ const TIPOS: { key: HiddenType; label: string }[] = [
 const norm = (s: string) =>
   s.trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 80)
 
+const dataCurta = (iso?: string) => {
+  if (!iso) return null
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime())
+    ? null
+    : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+}
+
+/**
+ * Lista de conteúdos ocultos: título em destaque, id e data ao lado.
+ *
+ * O id sozinho não diz nada ao operador — ele precisa reconhecer o título pra
+ * saber se ocultou o que queria, e a data pra lembrar do contexto.
+ */
+function ListaOcultos({
+  itens,
+  onRemover,
+}: {
+  itens: HiddenItem[]
+  onRemover: (id: string) => void
+}) {
+  return (
+    <div className='divide-y rounded-lg border'>
+      {itens.map((i) => (
+        <div
+          key={i.id}
+          className='flex items-center gap-3 px-2.5 py-1.5 text-sm hover:bg-muted/40'
+        >
+          <span className='min-w-0 flex-1 truncate'>
+            {i.t || <span className='text-muted-foreground'>(sem título)</span>}
+          </span>
+          <span className='shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground'>
+            {i.id}
+          </span>
+          {dataCurta(i.at) && (
+            <span className='shrink-0 text-xs text-muted-foreground'>
+              {dataCurta(i.at)}
+            </span>
+          )}
+          <button
+            type='button'
+            onClick={() => onRemover(i.id)}
+            className='shrink-0 text-muted-foreground hover:text-foreground'
+          >
+            <X className='size-3.5' />
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function AplicativoOcultar() {
   const qc = useQueryClient()
   const q = useQuery({ queryKey: ['hidden-content'], queryFn: getHiddenContent })
@@ -44,6 +97,7 @@ export function AplicativoOcultar() {
   const [manual, setManual] = useState('')
   const [idsColados, setIdsColados] = useState('')
   const [catAberta, setCatAberta] = useState<string | null>(null)
+  const [verTodos, setVerTodos] = useState(false)
 
   useEffect(() => {
     if (q.data) setCfg(structuredClone(q.data))
@@ -126,15 +180,44 @@ export function AplicativoOcultar() {
     patch({ categories: { ...cfg.categories, [tipo]: novas } })
   }
 
-  const addIds = (brutos: string[]) => {
+  /**
+   * Guarda título, categoria e data junto do id. Sem isso a lista de ocultos
+   * vira uma coluna de números e o operador não consegue auditar o que fez.
+   */
+  const addIds = (
+    brutos: { id: string; t?: string; c?: string }[] | string[]
+  ) => {
     const existentes = new Set(itens.map((i) => i.id))
-    const novos = brutos
-      .map((s) => s.trim())
-      .filter((s) => /^[A-Za-z0-9_-]{1,24}$/.test(s) && !existentes.has(s))
-      .map((id) => ({ id }))
+    const agora = new Date().toISOString()
+    const novos = (brutos as (string | { id: string; t?: string; c?: string })[])
+      .map((b) => (typeof b === 'string' ? { id: b.trim() } : b))
+      .filter(
+        (b) => /^[A-Za-z0-9_-]{1,24}$/.test(b.id) && !existentes.has(b.id)
+      )
+      .map((b) => ({
+        id: b.id,
+        ...(b.t ? { t: b.t.slice(0, 60) } : {}),
+        ...(b.c ? { c: b.c.slice(0, 40) } : {}),
+        at: agora,
+      }))
     if (!novos.length) return
     patch({ items: { ...cfg.items, [tipo]: [...itens, ...novos] } })
   }
+
+  const removeId = (id: string) =>
+    patch({
+      items: { ...cfg.items, [tipo]: itens.filter((x) => x.id !== id) },
+    })
+
+  /** Nome da categoria atualmente aberta, para carimbar nos itens marcados. */
+  const nomeCatAberta = catalogo.find((c) => c.id === catAberta)?.name
+
+  /** Itens ocultos agrupados pela categoria de origem. */
+  const porCategoria = itens.reduce<Record<string, typeof itens>>((acc, i) => {
+    const k = i.c || 'Sem categoria'
+    ;(acc[k] ??= []).push(i)
+    return acc
+  }, {})
 
   // Quantos conteúdos as categorias marcadas escondem (soma do que a sondagem
   // contou). Categoria sem contagem não entra — daí o "≈".
@@ -381,13 +464,10 @@ export function AplicativoOcultar() {
                     checked={marcado}
                     onChange={() =>
                       marcado
-                        ? patch({
-                            items: {
-                              ...cfg.items,
-                              [tipo]: itens.filter((x) => x.id !== it.id),
-                            },
-                          })
-                        : addIds([it.id])
+                        ? removeId(it.id)
+                        : addIds([
+                            { id: it.id, t: it.name, c: nomeCatAberta },
+                          ])
                     }
                     className='size-4 accent-red-600'
                   />
@@ -427,29 +507,32 @@ export function AplicativoOcultar() {
           </span>
         </div>
         {itens.length > 0 && (
-          <div className='flex flex-wrap gap-1.5'>
-            {itens.map((i) => (
-              <span
-                key={i.id}
-                className='inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs'
+          <div className='space-y-3 rounded-xl border p-3'>
+            <div className='flex items-center justify-between'>
+              <p className='text-sm font-medium'>
+                Ocultos em {TIPOS.find((t) => t.key === tipo)?.label}
+              </p>
+              <Button
+                variant='ghost'
+                size='sm'
+                onClick={() => setVerTodos((v) => !v)}
               >
-                {i.id}
-                <button
-                  type='button'
-                  onClick={() =>
-                    patch({
-                      items: {
-                        ...cfg.items,
-                        [tipo]: itens.filter((x) => x.id !== i.id),
-                      },
-                    })
-                  }
-                  className='text-muted-foreground hover:text-foreground'
-                >
-                  <X className='size-3' />
-                </button>
-              </span>
-            ))}
+                {verTodos ? 'Agrupar por categoria' : 'Ver todos'}
+              </Button>
+            </div>
+
+            {verTodos ? (
+              <ListaOcultos itens={itens} onRemover={removeId} />
+            ) : (
+              Object.entries(porCategoria).map(([cat, lista]) => (
+                <div key={cat} className='space-y-1'>
+                  <p className='text-xs font-medium text-muted-foreground'>
+                    {cat} · {lista.length}
+                  </p>
+                  <ListaOcultos itens={lista} onRemover={removeId} />
+                </div>
+              ))
+            )}
           </div>
         )}
       </section>
@@ -482,13 +565,10 @@ export function AplicativoOcultar() {
                       checked={marcado}
                       onChange={() =>
                         marcado
-                          ? patch({
-                              items: {
-                                ...cfg.items,
-                                [tipo]: itens.filter((x) => x.id !== b.id),
-                              },
-                            })
-                          : addIds([b.id])
+                          ? removeId(b.id)
+                          : addIds([
+                              { id: b.id, t: b.name, c: 'Reportado com falha' },
+                            ])
                       }
                       className='size-4 accent-red-600'
                     />
