@@ -193,6 +193,7 @@ export function AplicativoOcultar() {
   const [catAberta, setCatAberta] = useState<string | null>(null)
   const [verTodos, setVerTodos] = useState(false)
   const [verUsuarios, setVerUsuarios] = useState<BrokenItem | null>(null)
+  const [buscaFalha, setBuscaFalha] = useState('')
 
   useEffect(() => {
     if (q.data) setCfg(structuredClone(q.data))
@@ -268,6 +269,19 @@ export function AplicativoOcultar() {
       return A - B
     })
   }, [filtrado, cfg, tipo])
+
+  // Falhas do tipo atual, filtradas pela busca. O ID e o DNS entram no filtro
+  // porque é por eles que se rastreia um caso vindo do suporte.
+  const falhasFiltradas = (quebrados.data?.broken ?? []).filter((b) => {
+    if (b.type !== tipo) return false
+    const t = norm(buscaFalha)
+    if (!t) return true
+    return (
+      norm(b.name).includes(t) ||
+      b.id.includes(buscaFalha.trim()) ||
+      (b.hosts ?? []).some((h) => norm(h).includes(t))
+    )
+  })
 
   if (!cfg) {
     return <p className='py-8 text-center text-muted-foreground'>Carregando…</p>
@@ -725,6 +739,17 @@ export function AplicativoOcultar() {
           Títulos em que o player esgotou TODAS as fontes, nos apps dos
           clientes. É a lista objetiva do que está morto.
         </p>
+        {(quebrados.data?.broken ?? []).length > 0 && (
+          <div className='relative'>
+            <Search className='absolute start-2.5 top-2.5 size-4 text-muted-foreground' />
+            <Input
+              value={buscaFalha}
+              onChange={(e) => setBuscaFalha(e.target.value)}
+              placeholder='Buscar por título, ID ou DNS…'
+              className='ps-9'
+            />
+          </div>
+        )}
         {(quebrados.data?.broken ?? []).length === 0 ? (
           <p className='rounded-lg border border-dashed bg-muted/20 p-4 text-sm text-muted-foreground'>
             Nada reportado ainda. Chega conforme os clientes usarem a versão
@@ -732,9 +757,7 @@ export function AplicativoOcultar() {
           </p>
         ) : (
           <div className='max-h-64 divide-y overflow-y-auto rounded-xl border'>
-            {(quebrados.data?.broken ?? [])
-              .filter((b) => b.type === tipo)
-              .map((b) => {
+            {falhasFiltradas.map((b) => {
                 const marcado = itens.some((x) => x.id === b.id)
                 return (
                   <div
@@ -776,6 +799,11 @@ export function AplicativoOcultar() {
                   </div>
                 )
               })}
+            {falhasFiltradas.length === 0 && (
+              <p className='p-4 text-sm text-muted-foreground'>
+                Nada encontrado para "{buscaFalha}".
+              </p>
+            )}
           </div>
         )}
       </section>
