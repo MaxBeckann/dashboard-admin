@@ -529,6 +529,30 @@ export interface BrokenItem {
   /** Quantos CLIENTES distintos falharam neste título. */
   users: number
   lastAt: string
+  /** DNS distintos onde falhou. Um host só = problema do servidor, não do
+   *  título — muda a decisão de ocultar. */
+  hosts?: string[]
+}
+
+/** Um cliente que reportou falha num conteúdo. */
+export interface BrokenUser {
+  userId: string
+  accountName: string
+  accountEmail: string
+  plano: string
+  host: string
+  at: string
+  name: string
+}
+
+export async function listBrokenUsers(
+  type: HiddenType,
+  id: string
+): Promise<{ users: BrokenUser[] }> {
+  return callBoxHandler<{ users: BrokenUser[] }>('admin_broken_users', {
+    type,
+    id,
+  })
 }
 
 export async function listBroken(): Promise<{

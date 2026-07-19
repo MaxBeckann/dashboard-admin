@@ -7,6 +7,7 @@ import {
   Save,
   Search,
   Undo2,
+  Users,
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -14,9 +15,11 @@ import {
   getAppConfig,
   getHiddenContent,
   listBroken,
+  listBrokenUsers,
   listReportedCategories,
   probeCategories,
   setHiddenContent,
+  type BrokenItem,
   type HiddenContent,
   type HiddenItem,
   type HiddenType,
@@ -42,6 +45,97 @@ const dataCurta = (iso?: string) => {
   return Number.isNaN(d.getTime())
     ? null
     : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+}
+
+const dataHora = (iso?: string) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime())
+    ? ''
+    : d.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+}
+
+/** Quem falhou neste título, quando e em qual DNS. */
+function ModalUsuarios({
+  item,
+  onClose,
+}: {
+  item: BrokenItem
+  onClose: () => void
+}) {
+  const q = useQuery({
+    queryKey: ['broken-users', item.type, item.id],
+    queryFn: () => listBrokenUsers(item.type, item.id),
+  })
+
+  return (
+    <div
+      className='fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4'
+      onClick={onClose}
+    >
+      <div
+        className='max-h-[80vh] w-full max-w-xl overflow-hidden rounded-xl border bg-card shadow-xl'
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className='flex items-start justify-between gap-3 border-b p-4'>
+          <div className='min-w-0'>
+            <p className='truncate font-semibold'>{item.name || item.id}</p>
+            <p className='text-xs text-muted-foreground'>
+              <span className='font-mono'>{item.id}</span> ·{' '}
+              {item.users} cliente(s) com falha
+            </p>
+          </div>
+          <Button variant='ghost' size='icon' onClick={onClose}>
+            <X className='size-4' />
+          </Button>
+        </div>
+
+        <div className='max-h-[60vh] divide-y overflow-y-auto'>
+          {q.isLoading && (
+            <p className='p-4 text-sm text-muted-foreground'>Carregando…</p>
+          )}
+          {q.data?.users.length === 0 && (
+            <p className='p-4 text-sm text-muted-foreground'>
+              Nenhum registro (pode ter sido limpo).
+            </p>
+          )}
+          {(q.data?.users ?? []).map((u) => (
+            <div key={u.userId + u.at} className='flex items-center gap-3 p-3'>
+              <div className='flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold'>
+                {(u.accountName || u.accountEmail || '?')
+                  .slice(0, 2)
+                  .toUpperCase()}
+              </div>
+              <div className='min-w-0 flex-1'>
+                <p className='truncate text-sm font-medium'>
+                  {u.accountName || 'Sem nome'}
+                </p>
+                <p className='truncate text-xs text-muted-foreground'>
+                  {u.accountEmail}
+                  {u.plano && <> · {u.plano}</>}
+                </p>
+              </div>
+              <div className='shrink-0 text-end'>
+                <p className='text-xs text-muted-foreground'>
+                  {dataHora(u.at)}
+                </p>
+                {u.host && (
+                  <p className='font-mono text-[11px] text-muted-foreground'>
+                    {u.host}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 /**
@@ -98,6 +192,7 @@ export function AplicativoOcultar() {
   const [idsColados, setIdsColados] = useState('')
   const [catAberta, setCatAberta] = useState<string | null>(null)
   const [verTodos, setVerTodos] = useState(false)
+  const [verUsuarios, setVerUsuarios] = useState<BrokenItem | null>(null)
 
   useEffect(() => {
     if (q.data) setCfg(structuredClone(q.data))
@@ -255,6 +350,12 @@ export function AplicativoOcultar() {
 
   return (
     <div className='space-y-6'>
+      {verUsuarios && (
+        <ModalUsuarios
+          item={verUsuarios}
+          onClose={() => setVerUsuarios(null)}
+        />
+      )}
       <div className='flex items-start gap-3 rounded-xl border border-red-500/40 bg-red-500/10 p-4'>
         <AlertTriangle className='mt-0.5 size-5 shrink-0 text-red-500' />
         <div className='text-sm'>
@@ -652,12 +753,26 @@ export function AplicativoOcultar() {
                       }
                       className='size-4 accent-red-600'
                     />
-                    <span className='min-w-0 flex-1 truncate'>
-                      {b.name || b.id}
-                    </span>
+                    <div className='min-w-0 flex-1'>
+                      <p className='truncate'>{b.name || b.id}</p>
+                      <p className='truncate text-xs text-muted-foreground'>
+                        <span className='font-mono'>{b.id}</span>
+                        {b.lastAt && <> · última: {dataHora(b.lastAt)}</>}
+                        {b.hosts?.length ? <> · {b.hosts.join(', ')}</> : null}
+                      </p>
+                    </div>
                     <span className='shrink-0 rounded-md bg-red-500/10 px-2 py-0.5 text-xs text-red-500'>
                       {b.users} cliente(s)
                     </span>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      className='shrink-0'
+                      onClick={() => setVerUsuarios(b)}
+                    >
+                      <Users className='size-3.5' />
+                      Ver usuários
+                    </Button>
                   </div>
                 )
               })}
