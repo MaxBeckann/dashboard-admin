@@ -54,6 +54,7 @@ import { Route as AuthenticatedFinanceiroPagamentosRouteImport } from './routes/
 import { Route as AuthenticatedFinanceiroFunilRouteImport } from './routes/_authenticated/financeiro/funil'
 import { Route as AuthenticatedFinanceiroContratacoesRouteImport } from './routes/_authenticated/financeiro/contratacoes'
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
+import { Route as AuthenticatedAplicativoOcultarRouteImport } from './routes/_authenticated/aplicativo/ocultar'
 import { Route as AuthenticatedAplicativoGeralRouteImport } from './routes/_authenticated/aplicativo/geral'
 import { Route as AuthenticatedAplicativoPlatformRouteRouteImport } from './routes/_authenticated/aplicativo/$platform/route'
 import { Route as AuthenticatedAplicativoPlatformIndexRouteImport } from './routes/_authenticated/aplicativo/$platform/index'
@@ -308,6 +309,12 @@ const AuthenticatedErrorsErrorRoute =
     path: '/errors/$error',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAplicativoOcultarRoute =
+  AuthenticatedAplicativoOcultarRouteImport.update({
+    id: '/ocultar',
+    path: '/ocultar',
+    getParentRoute: () => AuthenticatedAplicativoRouteRoute,
+  } as any)
 const AuthenticatedAplicativoGeralRoute =
   AuthenticatedAplicativoGeralRouteImport.update({
     id: '/geral',
@@ -369,6 +376,7 @@ export interface FileRoutesByFullPath {
   '/503': typeof errors503Route
   '/aplicativo/$platform': typeof AuthenticatedAplicativoPlatformRouteRouteWithChildren
   '/aplicativo/geral': typeof AuthenticatedAplicativoGeralRoute
+  '/aplicativo/ocultar': typeof AuthenticatedAplicativoOcultarRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/financeiro/contratacoes': typeof AuthenticatedFinanceiroContratacoesRoute
   '/financeiro/funil': typeof AuthenticatedFinanceiroFunilRoute
@@ -416,6 +424,7 @@ export interface FileRoutesByTo {
   '/503': typeof errors503Route
   '/': typeof AuthenticatedIndexRoute
   '/aplicativo/geral': typeof AuthenticatedAplicativoGeralRoute
+  '/aplicativo/ocultar': typeof AuthenticatedAplicativoOcultarRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/financeiro/contratacoes': typeof AuthenticatedFinanceiroContratacoesRoute
   '/financeiro/funil': typeof AuthenticatedFinanceiroFunilRoute
@@ -471,6 +480,7 @@ export interface FileRoutesById {
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/aplicativo/$platform': typeof AuthenticatedAplicativoPlatformRouteRouteWithChildren
   '/_authenticated/aplicativo/geral': typeof AuthenticatedAplicativoGeralRoute
+  '/_authenticated/aplicativo/ocultar': typeof AuthenticatedAplicativoOcultarRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/_authenticated/financeiro/contratacoes': typeof AuthenticatedFinanceiroContratacoesRoute
   '/_authenticated/financeiro/funil': typeof AuthenticatedFinanceiroFunilRoute
@@ -524,6 +534,7 @@ export interface FileRouteTypes {
     | '/503'
     | '/aplicativo/$platform'
     | '/aplicativo/geral'
+    | '/aplicativo/ocultar'
     | '/errors/$error'
     | '/financeiro/contratacoes'
     | '/financeiro/funil'
@@ -571,6 +582,7 @@ export interface FileRouteTypes {
     | '/503'
     | '/'
     | '/aplicativo/geral'
+    | '/aplicativo/ocultar'
     | '/errors/$error'
     | '/financeiro/contratacoes'
     | '/financeiro/funil'
@@ -625,6 +637,7 @@ export interface FileRouteTypes {
     | '/_authenticated/'
     | '/_authenticated/aplicativo/$platform'
     | '/_authenticated/aplicativo/geral'
+    | '/_authenticated/aplicativo/ocultar'
     | '/_authenticated/errors/$error'
     | '/_authenticated/financeiro/contratacoes'
     | '/_authenticated/financeiro/funil'
@@ -991,6 +1004,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErrorsErrorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/aplicativo/ocultar': {
+      id: '/_authenticated/aplicativo/ocultar'
+      path: '/ocultar'
+      fullPath: '/aplicativo/ocultar'
+      preLoaderRoute: typeof AuthenticatedAplicativoOcultarRouteImport
+      parentRoute: typeof AuthenticatedAplicativoRouteRoute
+    }
     '/_authenticated/aplicativo/geral': {
       id: '/_authenticated/aplicativo/geral'
       path: '/geral'
@@ -1073,6 +1093,7 @@ const AuthenticatedAplicativoPlatformRouteRouteWithChildren =
 interface AuthenticatedAplicativoRouteRouteChildren {
   AuthenticatedAplicativoPlatformRouteRoute: typeof AuthenticatedAplicativoPlatformRouteRouteWithChildren
   AuthenticatedAplicativoGeralRoute: typeof AuthenticatedAplicativoGeralRoute
+  AuthenticatedAplicativoOcultarRoute: typeof AuthenticatedAplicativoOcultarRoute
   AuthenticatedAplicativoIndexRoute: typeof AuthenticatedAplicativoIndexRoute
 }
 
@@ -1081,6 +1102,7 @@ const AuthenticatedAplicativoRouteRouteChildren: AuthenticatedAplicativoRouteRou
     AuthenticatedAplicativoPlatformRouteRoute:
       AuthenticatedAplicativoPlatformRouteRouteWithChildren,
     AuthenticatedAplicativoGeralRoute: AuthenticatedAplicativoGeralRoute,
+    AuthenticatedAplicativoOcultarRoute: AuthenticatedAplicativoOcultarRoute,
     AuthenticatedAplicativoIndexRoute: AuthenticatedAplicativoIndexRoute,
   }
 

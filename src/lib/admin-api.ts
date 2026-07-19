@@ -435,6 +435,106 @@ export async function listReportedCategories(): Promise<ReportedCategories> {
   return callBoxHandler<ReportedCategories>('admin_list_categories', {})
 }
 
+// ---------------------------------------------------------------------------
+// Ocultar conteúdo
+// ---------------------------------------------------------------------------
+
+/** Tipo de catálogo. Espelha as chaves usadas pelo backend e pelo app. */
+export type HiddenType = 'movie' | 'series' | 'live'
+
+/** 'ours' = só quem usa a NOSSA lista (inclui o teste grátis). */
+export type HiddenScope = 'ours' | 'all'
+
+export interface HiddenCategory {
+  /** Nome como aparece na lista. É a chave principal do match. */
+  n: string
+  /** Id da categoria no painel — match secundário, sobrevive a renomeação. */
+  id?: string
+  /** 'contains' casa por trecho. Avançado: fácil de ocultar demais. */
+  m?: 'exact' | 'contains'
+}
+
+export interface HiddenItem {
+  id: string
+}
+
+export interface HiddenContent {
+  v: number
+  enabled: boolean
+  scope: HiddenScope
+  rev: number
+  updatedAt?: string
+  updatedBy?: string
+  categories: Record<HiddenType, HiddenCategory[]>
+  items: Record<HiddenType, HiddenItem[]>
+}
+
+export async function getHiddenContent(): Promise<HiddenContent> {
+  const r = await callBoxHandler<{ hidden: HiddenContent }>(
+    'admin_get_hidden_content',
+    {}
+  )
+  return r.hidden
+}
+
+export async function setHiddenContent(hidden: HiddenContent): Promise<void> {
+  await callBoxHandler('admin_set_hidden_content', { hidden })
+}
+
+/** Uma categoria da NOSSA lista, sondada direto no painel. */
+export interface ProbedCategory {
+  id: string
+  name: string
+  /** Itens contados no painel. `null` quando a contagem falhou. */
+  count: number | null
+}
+
+export interface ProbeResult {
+  ok: boolean
+  reason?: string
+  message?: string
+  cached?: boolean
+  at?: string
+  categories?: ProbedCategory[]
+  items?: { id: string; name: string }[]
+}
+
+/**
+ * Sonda a nossa lista. Sem `categoryId` devolve as categorias com contagem
+ * real de itens; com `categoryId`, os conteúdos daquela categoria (para
+ * escolher IDs por checkbox em vez de digitar).
+ */
+export async function probeCategories(
+  type: HiddenType,
+  opts?: { categoryId?: string; refresh?: boolean }
+): Promise<ProbeResult> {
+  return callBoxHandler<ProbeResult>('admin_probe_categories', {
+    type,
+    ...(opts?.categoryId ? { categoryId: opts.categoryId } : {}),
+    ...(opts?.refresh ? { refresh: true } : {}),
+  })
+}
+
+/** Conteúdo que os apps reportaram como quebrado (todas as fontes falharam). */
+export interface BrokenItem {
+  type: HiddenType
+  id: string
+  name: string
+  /** Quantos CLIENTES distintos falharam neste título. */
+  users: number
+  lastAt: string
+}
+
+export async function listBroken(): Promise<{
+  broken: BrokenItem[]
+  scanned: number
+}> {
+  return callBoxHandler<{ broken: BrokenItem[]; scanned: number }>(
+    'admin_list_broken',
+    {}
+  )
+}
+
 /** Lista os usuários cadastrados (contas Appwrite + plano/admin do perfil). */
 export async function listUsers(search?: string): Promise<AdminUserRow[]> {
   const res = await callBoxHandler<{ users?: AdminUserRow[] }>(

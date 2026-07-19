@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from '@tanstack/react-router'
-import { Monitor, Settings, Smartphone } from 'lucide-react'
+import { EyeOff, Monitor, Settings, Smartphone } from 'lucide-react'
 import { ConfigDrawer } from '@/components/config-drawer'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -66,6 +66,19 @@ export function AplicativoLayout() {
           >
             <Settings className='size-4' />
             Configuração Geral
+          </Link>
+          {/* Vermelho de propósito: é a única aba desta seção que REMOVE
+              conteúdo do app dos clientes. Precisa destoar das demais. */}
+          <Link
+            to='/aplicativo/ocultar'
+            className='inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium text-red-600 transition-colors hover:text-red-500 dark:text-red-500'
+            activeProps={{
+              className:
+                'bg-red-600 text-white shadow-sm hover:text-white dark:text-white',
+            }}
+          >
+            <EyeOff className='size-4' />
+            Ocultar Conteúdo
           </Link>
         </nav>
 
