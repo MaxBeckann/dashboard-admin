@@ -162,6 +162,18 @@ export function AplicativoOcultar() {
     return t ? catalogo.filter((c) => norm(c.name).includes(t)) : catalogo
   }, [catalogo, busca])
 
+  /** Ocultas primeiro: é o que o operador precisa conferir e desfazer. */
+  const ordenado = useMemo(() => {
+    const marcadas = new Set(
+      (cfg?.categories[tipo] ?? []).map((c) => norm(c.n))
+    )
+    return [...filtrado].sort((a, b) => {
+      const A = marcadas.has(norm(a.name)) ? 0 : 1
+      const B = marcadas.has(norm(b.name)) ? 0 : 1
+      return A - B
+    })
+  }, [filtrado, cfg, tipo])
+
   if (!cfg) {
     return <p className='py-8 text-center text-muted-foreground'>Carregando…</p>
   }
@@ -256,6 +268,42 @@ export function AplicativoOcultar() {
         </div>
       </div>
 
+      {/* Resumo — o operador precisa saber o que está ocultando SEM navegar
+          pelas três abas. Cinza quando a chave mestra está desligada: nesse
+          caso as regras existem mas não valem, e mostrar tudo vermelho daria
+          a impressão errada de que estão em vigor. */}
+      <section
+        className={`grid gap-px overflow-hidden rounded-xl border sm:grid-cols-3 ${
+          cfg.enabled ? 'border-red-600/30' : ''
+        }`}
+      >
+        {TIPOS.map((t) => {
+          const nc = cfg.categories[t.key]?.length ?? 0
+          const ni = cfg.items[t.key]?.length ?? 0
+          const ativo = cfg.enabled && nc + ni > 0
+          return (
+            <div
+              key={t.key}
+              className={`p-3 ${ativo ? 'bg-red-600/10' : 'bg-card'}`}
+            >
+              <p className='text-xs text-muted-foreground'>{t.label}</p>
+              <p
+                className={`mt-0.5 text-lg font-bold ${
+                  ativo ? 'text-red-400' : 'text-muted-foreground'
+                }`}
+              >
+                {nc + ni === 0 ? 'Nada oculto' : `${nc + ni} regra(s)`}
+              </p>
+              {nc + ni > 0 && (
+                <p className='text-xs text-muted-foreground'>
+                  {nc} categoria(s) · {ni} conteúdo(s)
+                </p>
+              )}
+            </div>
+          )
+        })}
+      </section>
+
       {/* Chave mestra */}
       <section className='rounded-xl bg-muted/40 p-4'>
         <div className='flex items-center justify-between gap-4'>
@@ -303,25 +351,36 @@ export function AplicativoOcultar() {
         </div>
       </section>
 
-      {/* Tipo */}
+      {/* Tipo — com contador do que está oculto em cada um, para o operador
+          não precisar clicar nas três abas pra saber onde há regra. */}
       <div className='inline-flex items-center gap-1 rounded-xl border bg-background/40 p-1'>
-        {TIPOS.map((t) => (
-          <button
-            key={t.key}
-            type='button'
-            onClick={() => {
-              setTipo(t.key)
-              setCatAberta(null)
-            }}
-            className={`rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors ${
-              tipo === t.key
-                ? 'bg-accent text-accent-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+        {TIPOS.map((t) => {
+          const n =
+            (cfg.categories[t.key]?.length ?? 0) +
+            (cfg.items[t.key]?.length ?? 0)
+          return (
+            <button
+              key={t.key}
+              type='button'
+              onClick={() => {
+                setTipo(t.key)
+                setCatAberta(null)
+              }}
+              className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                tipo === t.key
+                  ? 'bg-accent text-accent-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {t.label}
+              {n > 0 && (
+                <span className='rounded-full bg-red-600/90 px-1.5 text-[10px] font-bold text-white'>
+                  {n}
+                </span>
+              )}
+            </button>
+          )
+        })}
       </div>
 
       {/* Categorias */}
@@ -359,17 +418,21 @@ export function AplicativoOcultar() {
         </div>
 
         <div className='max-h-80 divide-y overflow-y-auto rounded-xl border'>
-          {filtrado.length === 0 && (
+          {ordenado.length === 0 && (
             <p className='p-4 text-sm text-muted-foreground'>
               Nada por aqui. Use "Atualizar da lista" ou adicione o nome à mão.
             </p>
           )}
-          {filtrado.map((c) => {
+          {ordenado.map((c) => {
             const marcada = ocultas.has(norm(c.name))
             return (
               <div
                 key={`${c.id ?? ''}${c.name}`}
-                className='flex items-center gap-3 p-2.5 hover:bg-muted/40'
+                className={`flex items-center gap-3 p-2.5 transition-colors ${
+                  marcada
+                    ? 'border-s-2 border-red-600 bg-red-600/10'
+                    : 'hover:bg-muted/40'
+                }`}
               >
                 <input
                   type='checkbox'
@@ -377,9 +440,26 @@ export function AplicativoOcultar() {
                   onChange={() => toggleCat(c.name, c.id)}
                   className='size-4 accent-red-600'
                 />
-                <span className='min-w-0 flex-1 truncate text-sm'>{c.name}</span>
+                <span
+                  className={`min-w-0 flex-1 truncate text-sm ${
+                    marcada ? 'text-red-400 line-through' : ''
+                  }`}
+                >
+                  {c.name}
+                </span>
+                {marcada && (
+                  <span className='shrink-0 rounded bg-red-600/20 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-red-400'>
+                    OCULTA
+                  </span>
+                )}
                 {c.count != null && (
-                  <span className='shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground'>
+                  <span
+                    className={`shrink-0 rounded-md px-2 py-0.5 text-xs ${
+                      marcada
+                        ? 'bg-red-600/15 text-red-400'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
                     {c.count} itens
                   </span>
                 )}
